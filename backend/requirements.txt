@@ -1,0 +1,21 @@
+# Segment 1 — data pipeline. Python 3.11. Versions verified together on 2026-09-28.
+imdlib==0.1.22
+xarray==2026.7.0
+netCDF4==1.7.4
+scipy==1.17.1
+pandas==3.0.6
+numpy==2.4.6
+geopandas==1.2.0
+shapely==2.1.2
+pyproj==3.7.2
+pyogrio==0.13.0
+SQLAlchemy==2.1.1
+GeoAlchemy2==0.20.0
+psycopg2-binary==2.9.13
+pydantic==2.13.5
+pydantic-settings==2.15.0
+python-dotenv==1.2.3
+rich==15.0.0
+requests==2.34.2
+cdsapi==0.7.7
+pytest==9.1.1

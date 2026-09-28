@@ -1,0 +1,44 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+
+# Local PostgreSQL data folder (native Windows setup)
+.pgdata/
+
+# PostgreSQL / PostGIS binaries and installer downloads
+tools/
+pgsql/
+
+# Secrets: every .env except the committed template
+.env
+.env.*
+!.env.example
+.cdsapirc
+
+# Data (large / regenerable). Small seed files are re-included below.
+backend/data/raw/**
+!backend/data/raw/**/
+!backend/data/raw/.gitkeep
+!backend/data/raw/crop_calendar_tn.csv
+!backend/data/raw/boundaries/README.md
+!backend/data/raw/boundaries/tn_districts_geoboundaries_adm2.geojson
+backend/data/processed/**
+!backend/data/processed/.gitkeep
+
+# Logs, gridded data, archives, caches
+*.log
+*.nc
+*.grd
+*.zip
+*.cache
+.cache/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

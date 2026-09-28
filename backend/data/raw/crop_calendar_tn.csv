@@ -1,0 +1,37 @@
+# SAMPLE DATA - NOT VERIFIED. Indicative Tamil Nadu crop stages for pipeline development only.
+# Verify against TNAU Agritech Portal / Tamil Nadu Dept of Agriculture crop calendars before any advisory use.
+# district=ALL means a statewide default. DOY = day of year (1-366). stage_*_day = days after sowing.
+district,crop,season,sowing_start_doy,sowing_end_doy,stage_name,stage_start_day,stage_end_day
+Thanjavur,paddy,kuruvai,152,196,nursery,0,25
+Thanjavur,paddy,kuruvai,152,196,tillering,26,55
+Thanjavur,paddy,kuruvai,152,196,panicle_initiation,56,75
+Thanjavur,paddy,kuruvai,152,196,flowering,76,95
+Thanjavur,paddy,kuruvai,152,196,maturity,96,115
+Thanjavur,paddy,samba,213,258,nursery,0,25
+Thanjavur,paddy,samba,213,258,tillering,26,70
+Thanjavur,paddy,samba,213,258,panicle_initiation,71,100
+Thanjavur,paddy,samba,213,258,flowering,101,125
+Thanjavur,paddy,samba,213,258,maturity,126,150
+ALL,paddy,samba,213,274,nursery,0,25
+ALL,paddy,samba,213,274,tillering,26,70
+ALL,paddy,samba,213,274,panicle_initiation,71,100
+ALL,paddy,samba,213,274,flowering,101,125
+ALL,paddy,samba,213,274,maturity,126,150
+ALL,groundnut,kharif,166,212,emergence,0,15
+ALL,groundnut,kharif,166,212,vegetative,16,35
+ALL,groundnut,kharif,166,212,flowering_pegging,36,60
+ALL,groundnut,kharif,166,212,pod_development,61,90
+ALL,groundnut,kharif,166,212,maturity,91,110
+ALL,cotton,rainfed_winter,244,288,emergence,0,20
+ALL,cotton,rainfed_winter,244,288,squaring,21,50
+ALL,cotton,rainfed_winter,244,288,flowering,51,90
+ALL,cotton,rainfed_winter,244,288,boll_development,91,140
+ALL,cotton,rainfed_winter,244,288,maturity,141,165
+ALL,millets,rabi_ne_monsoon,258,304,emergence,0,15
+ALL,millets,rabi_ne_monsoon,258,304,tillering,16,35
+ALL,millets,rabi_ne_monsoon,258,304,flowering,36,55
+ALL,millets,rabi_ne_monsoon,258,304,grain_filling_maturity,56,85
+ALL,pulses,rabi_ne_monsoon,258,304,emergence,0,15
+ALL,pulses,rabi_ne_monsoon,258,304,vegetative,16,30
+ALL,pulses,rabi_ne_monsoon,258,304,flowering,31,50
+ALL,pulses,rabi_ne_monsoon,258,304,pod_filling_maturity,51,70
