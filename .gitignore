@@ -29,6 +29,11 @@ backend/data/raw/**
 backend/data/processed/**
 !backend/data/processed/.gitkeep
 
+# Segment 2 (ML): MLflow store and trained model artifacts (regenerable)
+backend/mlruns/
+mlruns/
+backend/ml/artifacts/
+
 # Logs, gridded data, archives, caches
 *.log
 *.nc

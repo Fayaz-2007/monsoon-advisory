@@ -19,3 +19,8 @@ rich==15.0.0
 requests==2.34.2
 cdsapi==0.7.7
 pytest==9.1.1
+# Segment 2 — ML prediction engine
+lightgbm==4.7.0
+scikit-learn==1.9.1
+mlflow-skinny==3.16.1
+pyarrow==25.0.1
