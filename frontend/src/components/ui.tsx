@@ -30,7 +30,7 @@ export function CardHeader({ title, subtitle, right, icon }: {
         {icon && <div className="mt-0.5 text-muted">{icon}</div>}
         <div className="min-w-0">
           <h3 className="text-[15px] font-semibold tracking-tight">{title}</h3>
-          {subtitle && <p className="mt-0.5 text-[13px] text-muted">{subtitle}</p>}
+          {subtitle && <div className="mt-0.5 text-[13px] text-muted">{subtitle}</div>}
         </div>
       </div>
       {right}
@@ -52,7 +52,7 @@ export function PageTitle({ title, subtitle, right }: { title: ReactNode; subtit
     <motion.div variants={fadeUp} className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+        {subtitle && <div className="mt-1 text-sm text-muted">{subtitle}</div>}
       </div>
       {right}
     </motion.div>

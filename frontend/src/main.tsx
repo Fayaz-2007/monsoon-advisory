@@ -12,6 +12,9 @@ const queryClient = new QueryClient({
       retry: 3,
       retryDelay: (n) => Math.min(1000 * 2 ** n, 8000),
       refetchOnWindowFocus: false,
+      // Live views (delivery, alerts, feedback) keep polling even when the tab is not focused
+      // (e.g. a projector window during a demo).
+      refetchIntervalInBackground: true,
       placeholderData: (prev: unknown) => prev, // keep showing the last data while a new date loads
     },
   },
