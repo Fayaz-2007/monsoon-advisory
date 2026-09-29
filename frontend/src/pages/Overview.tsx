@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { AlertTriangle, BellRing, Map as MapIcon, Send, ThumbsUp, Users } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
@@ -19,7 +19,7 @@ export default function Overview() {
   const nav = useNavigate();
   const [theme] = useTheme();
   const [filter, setFilter] = useState<"alerts" | "all">("alerts");
-  const overview = useQuery({ queryKey: ["overview", date], queryFn: () => api.overview(date) });
+  const overview = useQuery({ queryKey: ["overview", date], queryFn: () => api.overview(date), refetchInterval: 15_000 });
   const districts = useQuery({ queryKey: ["districts", date], queryFn: () => api.districts(date) });
   const hazards = useQuery({
     queryKey: ["hazards", date],
@@ -128,16 +128,36 @@ export default function Overview() {
               {!Object.keys(o.hazards.by_type).length && <span className="text-sm text-faint">None</span>}
             </div>
           </Card>
-          <Card className="p-5">
-            <p className="flex items-center gap-1.5 text-[13px] text-muted"><ThumbsUp className="h-3.5 w-3.5" /> Farmer feedback</p>
-            <p className="mt-2 text-2xl font-semibold tabular-nums">
-              {o.feedback.total ? <CountUp value={(o.feedback.positive_rate ?? 0) * 100} format={(n) => `${Math.round(n)}%`} /> : "—"}
-            </p>
-            <p className="mt-1 text-[13px] text-muted">{o.feedback.total} responses found advice useful</p>
-          </Card>
+          <FeedbackCard />
         </motion.div>
       )}
     </Page>
+  );
+}
+
+/** Live farmer feedback (polls every 4 s, so a 👍 in the Farmer app shows up here). */
+function FeedbackCard() {
+  const q = useQuery({ queryKey: ["feedback", "all"], queryFn: () => api.feedbackSummary(), refetchInterval: 4000 });
+  const t = q.data?.totals;
+  return (
+    <Card className="p-5">
+      <p className="flex items-center gap-1.5 text-[13px] text-muted"><ThumbsUp className="h-3.5 w-3.5" /> Farmer feedback · live</p>
+      <p className="mt-2 text-2xl font-semibold tabular-nums">
+        {t?.total ? <CountUp value={(t.positive_rate ?? 0) * 100} format={(n) => `${Math.round(n)}% useful`} /> : "—"}
+      </p>
+      <p className="mt-1 text-[12px] text-muted">{t ? <>{t.up} 👍 · {t.down} 👎 · {t.real} from the Farmer app</> : "…"}</p>
+      <ul className="mt-3 space-y-1.5">
+        <AnimatePresence initial={false}>
+          {(q.data?.recent_comments ?? []).slice(0, 3).map((c) => (
+            <motion.li key={c.id} layout initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+              className="truncate text-[12px]">
+              {c.rating === 1 ? "👍" : "👎"} <span className="text-muted">{c.district} · {c.crop}:</span> {c.comment}
+              {!c.simulated && <span className="ml-1 rounded bg-accent-50 px-1 text-[10px] text-accent-800 dark:bg-accent-500/10 dark:text-accent-400">app</span>}
+            </motion.li>
+          ))}
+        </AnimatePresence>
+      </ul>
+    </Card>
   );
 }
 
