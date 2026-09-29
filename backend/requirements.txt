@@ -24,3 +24,8 @@ lightgbm==4.7.0
 scikit-learn==1.9.1
 mlflow-skinny==3.16.1
 pyarrow==25.0.1
+# Backend API (Segments 3, 4, 5, 7)
+fastapi==0.141.1
+uvicorn==0.54.0
+httpx==0.28.1
+anthropic==1.9.0

@@ -1,3 +1,4 @@
-# Segment 4 — Crop advisory engine (placeholder)
+# Segment 4 — Crop advisory engine
 
-Maps hazards + crop stage (table `crop_calendar`) to farmer advisories. Not built yet.
+Implemented in [`app/advisory/`](../app/advisory/) (crop stages, EN+TA rule table, auto-drafting,
+review workflow). See [`app/README.md`](../app/README.md).

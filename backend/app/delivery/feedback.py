@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.db import fetch_all, fetch_one
+from app.db import fetch_all, fetch_one, tx
 
 
 class FeedbackError(ValueError):
@@ -27,12 +27,13 @@ def add_feedback(advisory_id: int, rating: Any, comment: str | None = None,
     if adv is None:
         raise LookupError(f"advisory {advisory_id} not found")
     comment = (comment or "").strip()[:1000] or None
-    return fetch_one(
-        "INSERT INTO feedback (advisory_id, broadcast_id, region_id, channel, rating, comment) "
-        "VALUES (:a, :b, :r, :ch, :rt, :c) RETURNING id, advisory_id, broadcast_id, channel, "
-        "rating, comment, simulated, created_at",
-        {"a": advisory_id, "b": broadcast_id, "r": adv["region_id"], "ch": channel, "rt": r,
-         "c": comment})
+    with tx() as conn:
+        return fetch_one(
+            "INSERT INTO feedback (advisory_id, broadcast_id, region_id, channel, rating, comment) "
+            "VALUES (:a, :b, :r, :ch, :rt, :c) RETURNING id, advisory_id, broadcast_id, channel, "
+            "rating, comment, simulated, created_at",
+            {"a": advisory_id, "b": broadcast_id, "r": adv["region_id"], "ch": channel, "rt": r,
+             "c": comment}, conn)
 
 
 def _agg(group_sql: str, where: str, params: dict) -> list[dict[str, Any]]:
@@ -56,7 +57,7 @@ def summary(advisory_id: int | None = None, include_simulated: bool = True) -> d
         f"SELECT count(*) AS total, count(*) FILTER (WHERE rating = 1) AS up, "
         f"count(*) FILTER (WHERE rating = -1) AS down, "
         f"count(*) FILTER (WHERE simulated) AS simulated, "
-        f"count(*) FILTER (WHERE NOT simulated) AS real, "
+        f"count(*) FILTER (WHERE NOT simulated) AS \"real\", "
         f"count(*) FILTER (WHERE comment IS NOT NULL) AS with_comment "
         f"FROM feedback f WHERE {w}", params)
     tot["positive_rate"] = round(tot["up"] / tot["total"], 3) if tot["total"] else None

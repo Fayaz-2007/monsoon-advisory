@@ -1,8 +1,8 @@
 """Advisory rule table (Segment 4): crop × stage × hazard → advice in English and Tamil.
 
 Selection: every rule matching the hazard type (and subtype, if the rule sets one) is scored
-by specificity — exact stage +6, stage group +3, exact crop +2, wildcards 0 — and the highest
-score wins (ties: first in the table). Stage beats crop, so a generic "don't sow yet" rule
+by specificity — exact stage +6, stage group +3, exact crop +3, wildcards 0 — and the highest
+score wins (ties: first in the table, where crop-wide rules come before generic ones). Stage beats crop, so a generic "don't sow yet" rule
 outranks a crop-wide rule written for crops already in the field. No matching rule → no advisory for that crop.
 
 Texts are templates filled with real numbers from the hazard. The guidance is a SAMPLE
@@ -351,7 +351,7 @@ def select_rule(crop: str, stage: str, stage_group: str, hazard_type: str,
         s = _stage_score(r.stage, stage, stage_group)
         if s is None:
             continue
-        score = s + (2 if r.crop == crop else 0)
+        score = s + (3 if r.crop == crop else 0)
         if best is None or score > best[0]:
             best = (score, i, r)
     return best[2] if best else None

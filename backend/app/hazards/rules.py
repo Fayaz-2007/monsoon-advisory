@@ -116,18 +116,26 @@ def _soften(severity: str, confidence: str) -> str:
 
 
 def find_onset(obs: Sequence[tuple[date, float]]) -> dict[str, Any] | None:
-    """Most recent 2–3 day window with ≥ ONSET_MM. Returns start, end, days, total_mm."""
+    """The most recent onset event: a 2–3 day window with ≥ ONSET_MM that starts and ends on
+    a wet day. Among the qualifying windows of that event (ending within 2 days of the latest
+    one) the wettest is reported. Returns start, end, days, total_mm."""
     vals = list(obs)
-    for i in range(len(vals) - 1, -1, -1):
+
+    def windows_ending(i: int):
         for w in ONSET_WINDOWS:
-            window = vals[i - w + 1:i + 1] if i - w + 1 >= 0 else []
-            if len(window) < w or not all(_valid(r) for _, r in window):
-                continue
-            total = sum(r for _, r in window)
-            if total >= ONSET_MM:
-                return {"start": window[0][0], "end": window[-1][0], "days": w,
-                        "total_mm": round(total, 1)}
-    return None
+            win = vals[i - w + 1:i + 1] if i - w + 1 >= 0 else []
+            if (len(win) == w and all(_valid(r) for _, r in win)
+                    and win[0][1] >= DRY_DAY_MM and win[-1][1] >= DRY_DAY_MM):
+                total = sum(r for _, r in win)
+                if total >= ONSET_MM:
+                    yield total, -w, win
+
+    latest = next((i for i in range(len(vals) - 1, -1, -1) if any(windows_ending(i))), None)
+    if latest is None:
+        return None
+    total, neg_w, win = max((c for i in range(max(0, latest - 2), latest + 1)
+                             for c in windows_ending(i)), key=lambda c: (c[0], c[1]))
+    return {"start": win[0][0], "end": win[-1][0], "days": -neg_w, "total_mm": round(float(total), 1)}
 
 
 def is_onset_season(d: date) -> bool:
@@ -196,13 +204,20 @@ def rule_false_onset(obs, fc, issue_date: date, in_season: bool) -> Hazard | Non
         run_start = issue_date - timedelta(days=run)
         if (run >= DRY_SPELL_DAYS and run_start > onset["end"]
                 and (run_start - onset["end"]).days <= FALSE_ONSET_WINDOW_DAYS):
+            # Relief: useful rain in week 1 and no clearly dry week in weeks 1–3.
+            relief = p_onset_week(fc[0]) if fc else 0.0
+            more_dry = max((r["p_dry_week"] for r in fc[:3]), default=0.0)
+            easing = relief >= P_ONSET_ALERT and more_dry < P_FALSE_ONSET_MIN_DRY - 0.15
             return Hazard(
-                "false_onset", 1.0, 0, "High", "observed", "warning",
+                "false_onset", 1.0, 0, "High", "observed", "watch" if easing else "warning",
                 f"False onset under way: {onset['total_mm']} mm fell "
                 f"{fmt_range(onset['start'], onset['end'])}, and it has now been dry (< "
-                f"{DRY_DAY_MM} mm/day) for {run} days since {fmt_day(run_start)}.",
+                f"{DRY_DAY_MM} mm/day) for {run} days since {fmt_day(run_start)}."
+                + (f" Relief likely: {pct(relief)} chance of ≥ {ONSET_MM:.0f} mm in week 1."
+                   if easing else ""),
                 window_start=onset["start"], window_end=issue_date - timedelta(days=1),
-                evidence={"onset": onset, "dry_run_days": run})
+                evidence={"onset": onset, "dry_run_days": run, "p_rain_week1": round(relief, 4),
+                          "max_p_dry_weeks_1_3": more_dry})
         p_on, onset_end, onset_desc, on_conf = 1.0, onset["end"], (
             f"{onset['total_mm']} mm fell {fmt_range(onset['start'], onset['end'])} (onset)"), "High"
         first_lead = 1

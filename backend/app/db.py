@@ -18,7 +18,7 @@ from functools import lru_cache
 from typing import Any
 
 import pandas as pd
-from sqlalchemy import Connection, Engine, create_engine, text
+from sqlalchemy import Connection, Engine, create_engine, make_url, text
 
 from app.config import get_app_settings
 
@@ -192,7 +192,11 @@ def app_schema() -> str:
 @lru_cache(maxsize=4)
 def _engine_for(url: str, schema: str) -> Engine:
     search_path = f"{schema},public" if schema != "public" else "public"
-    return create_engine(url, pool_pre_ping=True, future=True, pool_size=10, max_overflow=10,
+    u = make_url(url)
+    if u.host == "localhost":
+        # On Windows "localhost" tries IPv6 first and costs seconds per new connection.
+        u = u.set(host="127.0.0.1")
+    return create_engine(u, pool_pre_ping=True, future=True, pool_size=10, max_overflow=10,
                          connect_args={"options": f"-csearch_path={search_path}"})
 
 

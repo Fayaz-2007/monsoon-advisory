@@ -1,3 +1,4 @@
-# Segment 7 — Delivery (placeholder)
+# Segment 7 — Delivery
 
-SMS / WhatsApp / IVR delivery of advisories. Not built yet.
+Implemented (simulated gateway) in [`app/delivery/`](../app/delivery/). See
+[`app/README.md`](../app/README.md).
