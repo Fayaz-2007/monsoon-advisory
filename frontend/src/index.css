@@ -1,0 +1,127 @@
+@import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Neutral palette + one accent (deep green). Semantic tokens switch with .dark */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-accent-50: #f0fdf4;
+  --color-accent-100: #dcfce7;
+  --color-accent-200: #bbf7d0;
+  --color-accent-400: #4ade80;
+  --color-accent-500: #22c55e;
+  --color-accent-600: #16a34a;
+  --color-accent-700: #15803d;
+  --color-accent-800: #166534;
+  --color-accent-900: #14532d;
+
+  --color-bg: var(--av-bg);
+  --color-surface: var(--av-surface);
+  --color-subtle: var(--av-subtle);
+  --color-line: var(--av-line);
+  --color-fg: var(--av-fg);
+  --color-muted: var(--av-muted);
+  --color-faint: var(--av-faint);
+}
+
+:root {
+  --av-bg: #ffffff;
+  --av-surface: #ffffff;
+  --av-subtle: #f7f7f8;
+  --av-line: #e8e8ea;
+  --av-fg: #0d0d0d;
+  --av-muted: #5d5d66;
+  --av-faint: #9a9aa3;
+  color-scheme: light;
+}
+
+.dark {
+  --av-bg: #0f0f10;
+  --av-surface: #171718;
+  --av-subtle: #1f1f21;
+  --av-line: #2c2c30;
+  --av-fg: #ececf1;
+  --av-muted: #a1a1aa;
+  --av-faint: #6b6b74;
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--av-bg);
+  color: var(--av-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* Skeleton shimmer (no spinners anywhere) */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--av-subtle);
+  border-radius: 0.75rem;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--av-line) 70%, transparent), transparent);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Leaflet: blend into the theme */
+.leaflet-container {
+  background: var(--av-subtle);
+  font-family: var(--font-sans);
+  border-radius: 1rem;
+}
+.leaflet-tooltip.av-tip {
+  background: var(--av-surface);
+  color: var(--av-fg);
+  border: 1px solid var(--av-line);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.08);
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.leaflet-tooltip.av-tip::before {
+  display: none;
+}
+.leaflet-interactive {
+  transition: fill 400ms ease, fill-opacity 400ms ease, stroke 200ms ease;
+}
+
+/* Thin scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--av-line) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+  .leaflet-interactive {
+    transition: none;
+  }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+  }
+}
