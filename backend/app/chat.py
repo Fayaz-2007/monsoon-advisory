@@ -96,11 +96,11 @@ def _src_line(facts: dict[str, Any]) -> str:
 
 
 def _week_line(f: dict[str, Any]) -> str:
-    lean = max(("below", f["p_below"]), ("normal", f["p_normal"]), ("above", f["p_above"]),
-               key=lambda x: x[1])
+    lean = max(("below-normal", f["p_below"]), ("near-normal", f["p_normal"]),
+               ("above-normal", f["p_above"]), key=lambda x: x[1])
     return (f"Week {f['lead_week']} ({f['window']}): median {f['median_mm']} mm "
             f"(range {f['range_mm'][0]}–{f['range_mm'][1]} mm), {pct(lean[1])} chance of "
-            f"{lean[0]}-normal rain, heavy-rain day {pct(f['p_heavy'])}, fully dry week "
+            f"{lean[0]} rain, heavy-rain day {pct(f['p_heavy'])}, fully dry week "
             f"{pct(f['p_dry_week'])} [{f['confidence']} confidence].")
 
 
@@ -137,7 +137,8 @@ def template_answer(message: str, facts: dict[str, Any]) -> str:
                 else f"{d}: no crop in the calendar is in its sowing window right now. ")
         if any(h["hazard_type"] == "false_onset" for h in bad):
             h = next(h for h in bad if h["hazard_type"] == "false_onset")
-            verdict = f"Don't sow yet. {h['why']}"
+            verdict = (f"Don't sow yet. {h['why']}" if h["severity"] == "warning"
+                       else f"Wait a few days before sowing. {h['why']}")
         elif bad:
             verdict = "Hold off on sowing. " + " ".join(h["why"] for h in bad[:2])
         elif good:
