@@ -118,6 +118,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
   const [playing, setPlaying] = useState(false);
   const fetching = useIsFetching();
   const source = useQuery({ queryKey: ["source"], queryFn: api.sourceInfo });
+  const scenarios = useQuery({ queryKey: ["scenarios"], queryFn: api.scenarios, staleTime: Infinity });
   const switchSource = useMutation({
     mutationFn: (s: "mock" | "real") => api.setSource(s, date),
     onSuccess: () => refreshAll(),
@@ -169,7 +170,7 @@ function Header({ onMenu }: { onMenu: () => void }) {
       <div className="ml-auto flex items-center gap-2">
         {scenario && current === "mock" && (
           <span className="hidden items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[12px] font-medium text-amber-800 ring-1 ring-amber-200 lg:inline-flex dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
-            <FlaskConical className="h-3.5 w-3.5" /> Scenario: {titleCase(scenario)}
+            <FlaskConical className="h-3.5 w-3.5" /> {scenarios.data?.scenarios.find((x) => x.name === scenario)?.title ?? titleCase(scenario)}
           </span>
         )}
         <div role="radiogroup" aria-label="Forecast source"
