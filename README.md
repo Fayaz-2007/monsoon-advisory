@@ -164,6 +164,38 @@ from pipeline import load_features
 df = load_features(start="2015-01-01", end="2025-12-31")
 ```
 
+## Running the demo (AgriVarsha)
+
+Double-click **`run_demo.bat`** (or run it from `cmd`). It starts PostgreSQL, the backend API
+(`uvicorn app.main:app` on port 8000), waits until the API answers (a cold start can take
+~90 s), starts the frontend (`npm run dev` on port 5173) and opens http://localhost:5173/.
+Press **D** in the app for the demo controls. Click-by-click story: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+
+Manually: `cd backend && python -m app.seed --scenarios && uvicorn app.main:app --reload`, then
+`cd frontend && npm install && npm run dev`. API contract: [`docs/contracts/api.md`](docs/contracts/api.md).
+
+## Demo mode vs real mode
+
+Everything the demo shows comes from the running backend; the frontend holds no data of its
+own. Only forecasts (by default), farmer counts and the message gateway are mocked, each
+behind a switch:
+
+| What | Real or mocked | How to switch |
+| --- | --- | --- |
+| District boundaries, observed IMD rainfall (1991 to yesterday), climatology, crop calendar | **Real** (Segment 1 pipeline) | always real |
+| Pipeline runs, data-quality report, validated model skill with CIs | **Real** (Segments 1–2) | always real |
+| Hazard detection, advisory drafting (EN + Tamil), review workflow, audit trail, feedback store | **Real logic**, persisted in PostgreSQL | always real |
+| 4-week forecasts | **Mock** generator by default (deterministic, same schema as the model), or the **real** LightGBM model `s2-lgbm-20260929-0304` | header toggle *Mock / Real model*, `POST /api/settings/forecast-source`, or `FORECAST_SOURCE=real` in `backend/.env` |
+| Demo scenarios (false onset trap, NE monsoon surge, mid-season break, normal season) | **Mock** overrides on top of mock forecasts | Demo panel (**D**) or `POST /api/demo/scenario/{name}`; activating one switches the source to mock |
+| Farmer counts per district × crop | **Mock** | `FARMER_COUNT_SOURCE` (only `mock` exists today) |
+| SMS / WhatsApp / IVR gateway and funnel counts | **Simulated** (the message text is the real advisory) | `DELIVERY_MODE` (only `simulated` today) |
+| Plain-language rewording and chat answers | Templates built from live data; Claude when `LLM_API_KEY` is set | `LLM_API_KEY` in `backend/.env` |
+
+Hazards driven by **observed** rain are real whatever the forecast source; the app marks them
+with an *Observed data* badge. In real mode, a date without its own model run uses the latest
+run on or before it (the header shows "run of …"). The current model rates every forecast
+*Low* confidence, so real mode raises no forecast-only warnings.
+
 ## Data sources
 
 | Data | Source | Notes |
