@@ -8,6 +8,8 @@ const read = (): Theme => (document.documentElement.classList.contains("dark") ?
 
 export function setTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
+  // Native controls (select popups, date pickers, scrollbars) follow the theme.
+  document.documentElement.style.colorScheme = theme;
   document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#0f0f10" : "#14532d");
   try {
     localStorage.setItem("av-theme", theme);

@@ -12,8 +12,10 @@
       // Apply the saved theme before first paint (no flash).
       try {
         const t = localStorage.getItem("av-theme");
-        if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches))
-          document.documentElement.classList.add("dark");
+        const dark = t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.classList.toggle("dark", dark);
+        // Native controls (select popups, date pickers, scrollbars) follow the theme.
+        document.documentElement.style.colorScheme = dark ? "dark" : "light";
       } catch {}
     </script>
   </head>
