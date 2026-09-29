@@ -86,7 +86,29 @@ Skill scores are relative to climatology: > 0 is better than climatology, 0 is n
 
 ## Example rows
 
-_Filled from the 2026-09-28 run, see below._
+Real rows from the 2026-09-28 run (model `s2-lgbm-20260929-0304`) for Chennai (`region_id` 3),
+lead weeks 1 and 4. Heading into the NE monsoon, the median weekly total rises from 17 to 49 mm:
+
+```json
+[
+  {"region_id": 3, "issue_date": "2026-09-28", "lead_week": 1,
+   "week_start": "2026-09-29", "week_end": "2026-10-05",
+   "p_below": 0.3933, "p_normal": 0.3225, "p_above": 0.2842,
+   "q10_mm": 0.48, "q50_mm": 16.82, "q90_mm": 70.08,
+   "p_heavy": 0.0554, "p_dry_week": 0.248, "confidence": "Low",
+   "model_version": "s2-lgbm-20260929-0304"},
+  {"region_id": 3, "issue_date": "2026-09-28", "lead_week": 4,
+   "week_start": "2026-10-20", "week_end": "2026-10-26",
+   "p_below": 0.2978, "p_normal": 0.325, "p_above": 0.3772,
+   "q10_mm": 0.74, "q50_mm": 49.31, "q90_mm": 179.44,
+   "p_heavy": 0.1527, "p_dry_week": 0.1601, "confidence": "Low",
+   "model_version": "s2-lgbm-20260929-0304"}
+]
+```
+
+With this model **every row is `Low`**: no lead week or season has a tercile-RPSS lower bound
+≥ 0.03 (best is lead 1 SWM at 0.025). Segment 3 should expect `Low` to be the norm until
+predictors with more skill (for example S2S via `ml/external.py`) are added.
 
 ## How Segment 3 should use this
 
