@@ -9,7 +9,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { Advisory, ForecastRow } from "../api/types";
 import { Logo } from "../components/Logo";
-import { cx, RetryState, Skeleton } from "../components/ui";
+import { BlockDemoBadge, cx, RetryState, Skeleton } from "../components/ui";
 import { useAppState } from "../lib/appState";
 import { CROP_EMOJI, CROP_TA, day, HAZARD_LABEL, HAZARD_LABEL_TA, parseDate, pct } from "../lib/format";
 
@@ -66,19 +66,29 @@ export default function Farmer() {
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("av-farmer-lang") as Lang) || "ta");
   const [district, setDistrict] = useState(() => localStorage.getItem("av-farmer-district") || "madurai");
   const [crop, setCrop] = useState(() => localStorage.getItem("av-farmer-crop") || "millets");
+  // MOCK block-level demo: Madurai farmers can pick their block ("" = whole district).
+  const [block, setBlock] = useState(() => { try { return localStorage.getItem("av-farmer-block") || ""; } catch { return ""; } });
   useEffect(() => {
     try {
       localStorage.setItem("av-farmer-lang", lang);
       localStorage.setItem("av-farmer-district", district);
       localStorage.setItem("av-farmer-crop", crop);
+      localStorage.setItem("av-farmer-block", block);
     } catch { /* ignore */ }
-  }, [lang, district, crop]);
+  }, [lang, district, crop, block]);
+  const blocks = useQuery({
+    queryKey: ["blocks", "madurai", date], queryFn: () => api.blocks("madurai", date),
+    enabled: district === "madurai", retry: 0,
+  });
+  const blockList = district === "madurai" ? blocks.data?.blocks ?? [] : [];
+  const activeBlock = blockList.find((b) => b.slug === block);
+  const region = activeBlock ? activeBlock.slug : district;
 
   const districts = useQuery({ queryKey: ["districts-list"], queryFn: () => api.districts(null, 0.1), staleTime: Infinity });
-  const fc = useQuery({ queryKey: ["forecast", district, date], queryFn: () => api.forecast(district, date) });
+  const fc = useQuery({ queryKey: ["forecast", region, date], queryFn: () => api.forecast(region, date) });
   const adv = useQuery({
-    queryKey: ["advisories", "farmer", district, date],
-    queryFn: () => api.advisories({ district, date, limit: 50 }),
+    queryKey: ["advisories", "farmer", region, date],
+    queryFn: () => api.advisories({ district: region, date, limit: 50 }),
     refetchInterval: 10_000,
   });
   const names = useMemo(() => (districts.data?.features ?? [])
@@ -113,7 +123,7 @@ export default function Farmer() {
             <div className="mt-4 grid grid-cols-2 gap-2">
               <label className="rounded-2xl border border-line bg-surface px-3 py-2">
                 <span className="flex items-center gap-1 text-[11px] text-muted"><MapPin className="h-3 w-3" />{t("district", lang)}</span>
-                <select value={district} onChange={(e) => setDistrict(e.target.value)}
+                <select value={district} onChange={(e) => { setDistrict(e.target.value); setBlock(""); }}
                   className="mt-0.5 w-full bg-transparent text-[15px] font-medium outline-none">
                   {(names.length ? names : [{ slug: district, name: district }]).map((d) => <option key={d.slug} value={d.slug}>{d.name}</option>)}
                 </select>
@@ -129,11 +139,27 @@ export default function Farmer() {
               </label>
             </div>
 
+            {blockList.length > 0 && (
+              <label className="mt-2 block rounded-2xl border border-line bg-surface px-3 py-2">
+                <span className="flex items-center gap-2 text-[11px] text-muted">
+                  <MapPin className="h-3 w-3" />{lang === "ta" ? "உங்கள் வட்டாரம்" : "Your block"}
+                  <BlockDemoBadge className="ml-auto" />
+                </span>
+                <select value={activeBlock ? block : ""} onChange={(e) => setBlock(e.target.value)}
+                  className="mt-0.5 w-full bg-transparent text-[15px] font-medium outline-none">
+                  <option value="">{lang === "ta" ? "முழு மாவட்டம்" : "Whole district"}</option>
+                  {[...blockList].sort((a, b) => a.name.localeCompare(b.name)).map((b) => (
+                    <option key={b.slug} value={b.slug}>{lang === "ta" ? b.name_ta : b.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+
             <section className="mt-5">
               <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-faint">{t("advice", lang)}</h2>
               {adv.isError ? <RetryState onRetry={() => adv.refetch()} />
                 : !adv.data ? <Skeleton className="h-48 rounded-3xl" />
-                  : <AdviceCard key={`${district}-${crop}-${advisory?.id}`} a={advisory} lang={lang} />}
+                  : <AdviceCard key={`${region}-${crop}-${advisory?.id}`} a={advisory} lang={lang} />}
             </section>
 
             <section className="mt-6">

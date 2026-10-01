@@ -8,9 +8,10 @@ hazard set differs from what was stored — triggers advisory auto-drafting.
 from __future__ import annotations
 
 import hashlib
+import logging
 import threading
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any
 
@@ -22,6 +23,7 @@ from app.db import execute, fetch_all, fetch_one, to_json, tx
 from app.forecasts import ForecastMeta, get_forecasts
 from app.hazards.rules import SEVERITY_ORDER, Hazard, detect_all
 
+log = logging.getLogger(__name__)
 OBS_DAYS = 30
 _MEMO_TTL_S = 30.0
 
@@ -36,6 +38,8 @@ class Context:
     observed_through: date | None
     forecasts: pd.DataFrame
     changed: bool
+    # MOCK block-level demo forecasts (Madurai blocks); empty if they could not be built.
+    block_forecasts: pd.DataFrame = field(default_factory=pd.DataFrame)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -83,6 +87,43 @@ def compute_hazards(issue_date: date, forecasts: pd.DataFrame) -> tuple[list[dic
             out.append(d)
     out.sort(key=lambda h: (-SEVERITY_ORDER[h["severity"]], -h["probability"], h["district"]))
     return out, observed_through
+
+
+def compute_block_hazards(issue_date: date, block_fc: pd.DataFrame) -> list[dict[str, Any]]:
+    """Same rules for the MOCK Madurai blocks (demo data)."""
+    from app import blocks
+
+    if block_fc.empty:
+        return []
+    obs = blocks.observed_daily(issue_date, OBS_DAYS)
+    feats = segment1.latest_features(issue_date - timedelta(days=1)).set_index("region_id")
+    pid = int(blocks.parent_region()["id"])
+    pfeat = feats.loc[pid] if pid in feats.index else None
+    out: list[dict[str, Any]] = []
+    for rid, g in block_fc.groupby("region_id"):
+        b = blocks.by_id(int(rid))
+        bobs = obs[obs["region_id"] == rid]
+        anom, wet = blocks.features_for(bobs, pfeat)
+        fc = [{k: _clean(v) for k, v in row.items()} for row in g.sort_values("lead_week").to_dict("records")]
+        for h in detect_all(list(zip(bobs["date"], bobs["rain_mm"])), fc, issue_date, anom, wet):
+            d = h.as_dict()
+            d.update(region_id=int(rid), district=b.label)
+            out.append(d)
+    return out
+
+
+def _block_part(issue_date: date, forecasts: pd.DataFrame,
+                scenario: str) -> tuple[pd.DataFrame, list[dict[str, Any]]]:
+    """Block forecasts + hazards; any failure leaves the district flow untouched."""
+    from app import blocks
+    from app.config import get_app_settings
+
+    try:
+        bfc = blocks.block_forecasts(issue_date, forecasts, scenario, get_app_settings().mock_seed)
+        return bfc, compute_block_hazards(issue_date, bfc)
+    except Exception:  # noqa: BLE001 — demo layer must never break the real flow
+        log.exception("block-level demo data failed for %s", issue_date)
+        return pd.DataFrame(), []
 
 
 def fingerprint(hazards: list[dict[str, Any]]) -> str:
@@ -142,8 +183,11 @@ def ensure_context(issue_date: date | None = None, force: bool = False) -> Conte
             return hit[1]
         forecasts, meta = get_forecasts(issue_date, source, scenario)
         hazards, observed_through = compute_hazards(issue_date, forecasts)
+        block_fc, block_hz = _block_part(issue_date, forecasts, scenario)
+        hazards = hazards + block_hz
         run_id, changed = _store(issue_date, source, scenario, meta, observed_through, hazards)
-        ctx = Context(issue_date, source, scenario, run_id, meta, observed_through, forecasts, changed)
+        ctx = Context(issue_date, source, scenario, run_id, meta, observed_through, forecasts,
+                      changed, block_fc)
         if changed:
             from app.advisory.engine import draft_advisories
             draft_advisories(ctx)
@@ -157,11 +201,19 @@ def clear_memo() -> None:
 
 
 def list_hazards(run_id: int, district_id: int | None = None,
-                 hazard_type: str | None = None) -> list[dict[str, Any]]:
+                 hazard_type: str | None = None, level: str = "district") -> list[dict[str, Any]]:
+    """Hazards of one run. ``level``: district (default, the 38 districts) | block (MOCK
+    Madurai blocks) | all. Filtering by ``district_id`` ignores ``level``."""
+    from app.blocks import BLOCK_ID_BASE
+
     where, params = ["run_id = :r"], {"r": run_id}
     if district_id is not None:
         where.append("region_id = :rid")
         params["rid"] = district_id
+    elif level == "district":
+        where.append(f"region_id < {BLOCK_ID_BASE}")
+    elif level == "block":
+        where.append(f"region_id > {BLOCK_ID_BASE}")
     if hazard_type:
         where.append("hazard_type = :t")
         params["t"] = hazard_type

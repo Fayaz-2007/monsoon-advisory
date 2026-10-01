@@ -7,7 +7,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app import segment1
+from app import blocks, segment1
 from app.advisory.stages import current_stages
 from app.api.common import clean, context_or_error, district_or_404, forecast_rows, records
 from app.api.overview import build_overview, district_risk
@@ -62,21 +62,64 @@ def get_forecast(district: str, date: date | None = DateQ):
     """4-week forecast for one district plus its hazards, crop stages and recent rain."""
     reg = district_or_404(district)
     ctx = context_or_error(date)
-    obs = segment1.observed_daily(ctx.issue_date, 30, [reg["id"]])
+    is_block = reg.get("level") == "block"
+    if is_block:
+        obs = blocks.observed_daily(ctx.issue_date, 30)
+        obs = obs[obs["region_id"] == reg["id"]]
+    else:
+        obs = segment1.observed_daily(ctx.issue_date, 30, [reg["id"]])
     last7 = obs[obs["date"] >= ctx.issue_date - timedelta(days=7)]
+    info = {k: reg[k] for k in ("id", "code", "slug", "name", "area_km2", "lon", "lat", "coastal")}
+    if is_block:
+        info.update({k: reg[k] for k in ("level", "label", "name_ta", "parent", "hq", "demo",
+                                         "demo_label", "coord_source")})
     return {
         "context": ctx.as_dict(),
-        "district": {k: reg[k] for k in ("id", "code", "slug", "name", "area_km2", "lon", "lat", "coastal")},
+        "district": info,
         "forecast": forecast_rows(ctx, reg["id"]),
         "hazards": list_hazards(ctx.run_id, reg["id"]),
-        "crop_stages": [s.as_dict() for s in current_stages(reg["name"], ctx.issue_date)],
+        "crop_stages": [s.as_dict() for s in current_stages(
+            reg["parent"]["name"] if is_block else reg["name"], ctx.issue_date)],
         "observed": {
             "through": clean(obs["date"].max()) if not obs.empty else None,
             "last_7_days_mm": round(float(last7["rain_mm"].sum()), 1) if not last7.empty else None,
             "last_30_days_mm": round(float(obs["rain_mm"].sum()), 1) if not obs.empty else None,
-            "source": "Segment 1 rainfall_daily (IMD gridded, area-weighted)",
+            "source": ("MOCK block rain: Madurai's IMD series x per-block factor (demo)" if is_block
+                       else "Segment 1 rainfall_daily (IMD gridded, area-weighted)"),
         },
     }
+
+
+@router.get("/blocks", tags=["blocks"])
+def get_blocks(district: str = Query("madurai", description="Parent district (only Madurai has "
+                                                             "block-level demo data)"),
+               date: date | None = DateQ):
+    """MOCK block-level demo data: the CD blocks of a district with each block's current risk.
+    Only Madurai (13 blocks) has them; other districts return an empty list."""
+    parent = district_or_404(district)
+    ctx = context_or_error(date)
+    is_madurai = parent.get("level") != "block" and parent["name"] == blocks.PARENT_DISTRICT
+    risk = district_risk(list_hazards(ctx.run_id, level="block")) if is_madurai else {}
+    none = {"severity": "none", "top_hazard": None, "top_probability": None, "hazard_types": []}
+    items = ([{**blocks.block_dict(b), "risk": risk.get(b.id, none)} for b in blocks.BLOCKS]
+             if is_madurai else [])
+    return {"context": ctx.as_dict(),
+            "district": {"id": parent["id"], "name": parent["name"], "slug": parent["slug"]},
+            "level": "block", "demo": True, "demo_label": blocks.DEMO_LABEL,
+            "sources": {"block_list": blocks.SOURCE_BLOCKS,
+                        "coordinates": "OpenStreetMap (Nominatim/Photon); Sedapatti: Wikipedia",
+                        "data": "MOCK generator (same as districts), blended with the parent district"},
+            "count": len(items), "blocks": items}
+
+
+@router.get("/blocks/{block}", tags=["blocks"])
+def get_block(block: str, date: date | None = DateQ):
+    """One block's forecast, hazards, crop stages and recent (MOCK) rain — same shape as
+    GET /api/forecast/{district}."""
+    reg = blocks.resolve_block(block)
+    if reg is None:
+        raise HTTPException(404, f"Unknown block {block!r}. See GET /api/blocks?district=madurai.")
+    return get_forecast(str(reg["id"]), date)
 
 
 @router.get("/hazards")
@@ -85,11 +128,14 @@ def get_hazards(date: date | None = DateQ,
                 type: str | None = Query(None, description="onset | false_onset | active_phase | "
                                                            "dry_spell | heavy_rain | revival"),
                 severity: Literal["info", "watch", "warning"] | None = None,
-                min_severity: Literal["info", "watch", "warning"] | None = None):
+                min_severity: Literal["info", "watch", "warning"] | None = None,
+                level: Literal["district", "block", "all"] = Query(
+                    "district", description="district (the 38 districts) | block (MOCK Madurai "
+                                            "blocks, demo) | all")):
     """Hazards detected for the issue date (Segment 3), most severe first."""
     ctx = context_or_error(date)
     rid = district_or_404(district)["id"] if district else None
-    rows = list_hazards(ctx.run_id, rid, type)
+    rows = list_hazards(ctx.run_id, rid, type, level)
     order = {"info": 0, "watch": 1, "warning": 2}
     if severity:
         rows = [h for h in rows if h["severity"] == severity]
@@ -109,7 +155,9 @@ def get_rainfall(district: str, days: int = Query(30, ge=1, le=366),
                  end: date | None = Query(None, description="Last day (default: latest data)")):
     """REAL observed daily rainfall (Segment 1) with the 1991–2020 daily normal."""
     reg = district_or_404(district)
-    df = segment1.rainfall_series(reg["id"], days, end)
+    is_block = reg.get("level") == "block"
+    df = (blocks.rainfall_series(reg["id"], days, end) if is_block
+          else segment1.rainfall_series(reg["id"], days, end))
     if df.empty:
         raise HTTPException(404, f"No rainfall data for {reg['name']} in the requested window")
     rows = records(df)
@@ -122,8 +170,11 @@ def get_rainfall(district: str, days: int = Query(30, ge=1, le=366),
         "percent_of_normal": round(100 * total / normal, 1) if normal > 0 else None,
         "wet_days": int((df["rain_mm"] >= 2.5).sum()),
         "max_day_mm": round(float(df["rain_mm"].max()), 1),
-        "source": "Segment 1 rainfall_daily (IMD 0.25° gridded, area-weighted); normal = "
-                  "climatology_daily.rain_mean 1991–2020",
+        "source": ("MOCK block rain (demo): Madurai's IMD series x per-block factor; normal = "
+                   "Madurai climatology 1991–2020") if is_block else
+                  ("Segment 1 rainfall_daily (IMD 0.25° gridded, area-weighted); normal = "
+                   "climatology_daily.rain_mean 1991–2020"),
+        "demo": is_block,
         "series": rows,
     }
 
@@ -138,6 +189,7 @@ def get_crop_calendar(district: str | None = None, date: date | None = DateQ):
     if district:
         reg = district_or_404(district)
         ctx = context_or_error(date)
-        out["stages"] = [s.as_dict() for s in current_stages(reg["name"], ctx.issue_date)]
+        name = reg["parent"]["name"] if reg.get("level") == "block" else reg["name"]
+        out["stages"] = [s.as_dict() for s in current_stages(name, ctx.issue_date)]
         out["issue_date"] = ctx.issue_date
     return out

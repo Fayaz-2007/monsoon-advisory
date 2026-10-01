@@ -23,6 +23,7 @@ from app.config import get_app_settings
 from app.advisory.rules import (CROP_NAMES, SOURCE_NOTE, STAGE_NAMES, TA_DISTRICTS, AdviceRule,
                                 select_rule)
 from app.advisory.stages import CropStage, current_stages
+from app.blocks import BLOCKS, TA_LABELS, block_areas, is_block_id, parent_of_label
 from app.db import fetch_all, fetch_one, to_json, tx
 from app.hazards.rules import SEVERITY_ORDER, fmt_range, pct
 from app.mock.farmers import farmer_counts
@@ -63,7 +64,8 @@ def render(rule: AdviceRule, hazard: dict[str, Any], cs: CropStage) -> dict[str,
         window_en, window_ta = fmt_range(ws, we), f"{_fmt_ta(ws)}–{_fmt_ta(we)}"
         prob_en = prob_ta = pct(float(hazard["probability"]))
     common = {"district": hazard["district"],
-              "district_ta": TA_DISTRICTS.get(hazard["district"], hazard["district"])}
+              "district_ta": TA_DISTRICTS.get(hazard["district"],
+                                             TA_LABELS.get(hazard["district"], hazard["district"]))}
     en = {**common, "crop": crop_en, "crop_ta": crop_ta, "stage": stage_en, "stage_ta": stage_ta,
           "window": window_en, "prob": prob_en}
     ta = {**en, "window": window_ta, "prob": prob_ta, "crop": crop_ta, "stage": stage_ta}
@@ -81,6 +83,8 @@ def build_drafts(ctx_date: date, hazards: list[dict[str, Any]],
                  stages_by_district: dict[str, list[CropStage]]) -> list[dict[str, Any]]:
     """Pure core: one draft per (district, crop, season, hazard type) with a matching rule."""
     area = dict(zip(segment1.regions()["name"], segment1.regions()["area_km2"])) if hazards else {}
+    if any(is_block_id(h["region_id"]) for h in hazards):
+        area.update({b.label: block_areas()[b.id] for b in BLOCKS})
     drafts = []
     for h in hazards:
         for cs in stages_by_district.get(h["district"], []):
@@ -96,7 +100,8 @@ def build_drafts(ctx_date: date, hazards: list[dict[str, Any]],
                 hazard_why=h["why"], rule_id=rule.rule_id,
                 severity=_min_severity(rule.severity, h["severity"]),
                 source_note=SOURCE_NOTE,
-                farmers_targeted=farmer_counts(h["district"], float(area.get(h["district"], 0)), cs.crop),
+                farmers_targeted=farmer_counts(parent_of_label(h["district"]),
+                                               float(area.get(h["district"], 0)), cs.crop),
             )
             drafts.append(d)
     return resolve_conflicts(drafts)
@@ -145,9 +150,9 @@ def draft_advisories(ctx: "Context") -> dict[str, int]:
     """Sync the advisories of one context with its current hazards."""
     from app.hazards.engine import list_hazards
 
-    hazards = list_hazards(ctx.run_id)
+    hazards = list_hazards(ctx.run_id, level="all")
     districts = {h["district"] for h in hazards}
-    stages = {d: current_stages(d, ctx.issue_date) for d in districts}
+    stages = {d: current_stages(parent_of_label(d), ctx.issue_date) for d in districts}
     drafts = build_drafts(ctx.issue_date, hazards, stages)
     stats = {"inserted": 0, "updated": 0, "superseded": 0, "kept": 0}
     to_rephrase: dict[int, str] = {}

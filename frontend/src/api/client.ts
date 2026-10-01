@@ -1,6 +1,6 @@
 // Thin fetch wrapper around the AgriVarsha API (docs/contracts/api.md).
 import type {
-  AdvisoriesResponse, AdvisoryDetail, BroadcastListItem, BroadcastStatus, Channel,
+  AdvisoriesResponse, AdvisoryDetail, BlocksResponse, BroadcastListItem, BroadcastStatus, Channel,
   CropCalendarResponse, DistrictsResponse, FeedbackSummary, ForecastResponse, ForecastRow,
   Context, Health, HazardsResponse, ModelSkill, Overview, PipelineHealth, RainfallResponse,
   ScenariosResponse, Source, SourceInfo,
@@ -55,6 +55,8 @@ export const api = {
     get<DistrictsResponse>("/districts", { date, tolerance }),
   forecast: (district: string, date?: string | null) =>
     get<ForecastResponse>(`/forecast/${encodeURIComponent(district)}`, { date }),
+  blocks: (district = "madurai", date?: string | null) =>
+    get<BlocksResponse>("/blocks", { district, date }),
   forecasts: (date?: string | null, lead_week?: number) =>
     get<{ context: Context; count: number; forecasts: ForecastRow[] }>("/forecasts", { date, lead_week }),
   hazards: (p: { date?: string | null; district?: string; type?: string; min_severity?: string }) =>

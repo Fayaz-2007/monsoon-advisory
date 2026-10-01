@@ -10,7 +10,7 @@ import type { Advisory, AdvisoryDetail, AdvisoryStatus, Severity } from "../api/
 import { BroadcastDialog } from "../components/BroadcastDialog";
 import { Dialog } from "../components/Dialog";
 import {
-  Button, Card, Chip, cx, EmptyState, fadeUp, Page, PageTitle, RetryState, SeverityChip, SkeletonLines, stagger, useToast,
+  BlockDemoBadge, Button, Card, Chip, cx, EmptyState, fadeUp, Page, PageTitle, RetryState, SeverityChip, SkeletonLines, stagger, useToast,
 } from "../components/ui";
 import { useAppState } from "../lib/appState";
 import { compact, CROP_EMOJI, HAZARD_LABEL, pct, timeAgo, titleCase } from "../lib/format";
@@ -134,6 +134,7 @@ function QueueItem({ a, active, onClick }: { a: Advisory; active: boolean; onCli
         <div className="mt-1 flex items-center gap-1.5 text-[12px] text-muted">
           <SeverityChip severity={a.severity} />
           <span className="truncate">{a.district} · {titleCase(a.stage)}</span>
+          {isBlockAdvisory(a) && <span className="shrink-0 rounded-full bg-violet-50 px-1.5 text-[10px] font-medium text-violet-700 dark:bg-violet-500/10 dark:text-violet-300" title="Block level · demo data">demo</span>}
           <span className="ml-auto shrink-0 tabular-nums">{compact(a.farmers_targeted)}</span>
         </div>
       </button>
@@ -176,6 +177,7 @@ function AdvisoryPanel({ id }: { id: number }) {
           {a.edited && <Chip><Pencil className="h-3 w-3" /> Edited</Chip>}
           <Chip>{CROP_EMOJI[a.crop]} {titleCase(a.crop)} · {titleCase(a.stage)}</Chip>
           <Chip>{a.district}</Chip>
+          {isBlockAdvisory(a) && <BlockDemoBadge />}
           <div className="ml-auto flex rounded-lg bg-subtle p-0.5 text-[12px]">
             {(["en", "ta"] as const).map((l) => (
               <button key={l} onClick={() => setLang(l)}
@@ -362,4 +364,9 @@ function RejectDialog({ a, open, onClose, onDone }: {
       </div>
     </Dialog>
   );
+}
+
+/** Advisories for MOCK block-level demo regions (Madurai blocks) use region ids above 90000. */
+function isBlockAdvisory(a: { region_id: number }): boolean {
+  return a.region_id > 90000;
 }

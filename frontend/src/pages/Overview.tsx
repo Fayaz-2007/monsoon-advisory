@@ -21,6 +21,8 @@ export default function Overview() {
   const [filter, setFilter] = useState<"alerts" | "all">("alerts");
   const overview = useQuery({ queryKey: ["overview", date], queryFn: () => api.overview(date), refetchInterval: 15_000 });
   const districts = useQuery({ queryKey: ["districts", date], queryFn: () => api.districts(date) });
+  // MOCK block-level demo data (Madurai); the map works without it.
+  const blocks = useQuery({ queryKey: ["blocks", "madurai", date], queryFn: () => api.blocks("madurai", date), retry: 0 });
   const hazards = useQuery({
     queryKey: ["hazards", date],
     queryFn: () => api.hazards({ date }),
@@ -61,10 +63,10 @@ export default function Overview() {
         <Card className="lg:col-span-3">
           <CardHeader icon={<MapIcon className="h-4 w-4" />} title="District risk map"
             subtitle="Worst hazard per district · hover for details, click to open"
-            right={<MapLegend />} />
+            right={<MapLegend withBlocks={!!blocks.data?.blocks.length} />} />
           <div className="h-[460px] px-3 pb-3">
             {districts.data ? (
-              <RiskMap data={districts.data} dark={theme === "dark"} onSelect={goDistrict} />
+              <RiskMap data={districts.data} dark={theme === "dark"} onSelect={goDistrict} blocks={blocks.data?.blocks} />
             ) : districts.isError ? (
               <RetryState onRetry={() => districts.refetch()} />
             ) : (

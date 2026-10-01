@@ -1,18 +1,20 @@
 import { motion } from "framer-motion";
 import { ArrowLeft, BellRing, CloudLightning, Droplets, Sprout, SunDim, Waves } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
-import type { CropStage, ForecastRow, Hazard } from "../api/types";
+import type { BlocksResponse, CropStage, ForecastRow, Hazard } from "../api/types";
+import { BlockMap } from "../components/RiskMap";
 import { BandChart, RainChart } from "../components/charts";
 import { ConfidenceBadge, TercileBar } from "../components/forecastBits";
 import { HAZARD_ICON } from "../components/HazardItem";
 import {
-  Card, CardHeader, Chip, EmptyState, fadeUp, ObservedBadge, Page, PageTitle, RetryState, SeverityChip, Skeleton,
+  BlockDemoBadge, Card, CardHeader, Chip, EmptyState, fadeUp, ObservedBadge, Page, PageTitle, RetryState, SeverityChip, Skeleton,
   SkeletonLines, stagger,
 } from "../components/ui";
 import { useAppState } from "../lib/appState";
-import { CROP_EMOJI, day, HAZARD_LABEL, isObserved, num, pct, range, titleCase } from "../lib/format";
+import { useTheme } from "../lib/theme";
+import { CROP_EMOJI, day, HAZARD_LABEL, isObserved, num, pct, range, SEVERITY_STYLE, titleCase } from "../lib/format";
 import { ContextLine } from "./Overview";
 
 export default function District() {
@@ -26,6 +28,14 @@ export default function District() {
     queryFn: () => api.advisories({ district: slug, date, limit: 20 }),
   });
   const d = fc.data;
+  const isBlock = d?.district.level === "block";
+  // MOCK block-level demo data: only Madurai has blocks.
+  const blocks = useQuery({
+    queryKey: ["blocks", "madurai", date],
+    queryFn: () => api.blocks("madurai", date),
+    enabled: !!d && (d.district.slug === "madurai" || isBlock),
+    retry: 0,
+  });
 
   if (fc.isError) {
     return <Page><RetryState title="We couldn't load this district" onRetry={() => fc.refetch()} /></Page>;
@@ -34,12 +44,18 @@ export default function District() {
   return (
     <Page>
       <motion.div variants={fadeUp}>
-        <Link to={`/app/overview${location.search}`} className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-fg">
-          <ArrowLeft className="h-3.5 w-3.5" /> Overview
-        </Link>
+        {isBlock && d?.district.parent ? (
+          <Link to={`/app/district/${d.district.parent.slug}${location.search}`} className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-fg">
+            <ArrowLeft className="h-3.5 w-3.5" /> {d.district.parent.name} district
+          </Link>
+        ) : (
+          <Link to={`/app/overview${location.search}`} className="mb-3 inline-flex items-center gap-1.5 text-[13px] text-muted hover:text-fg">
+            <ArrowLeft className="h-3.5 w-3.5" /> Overview
+          </Link>
+        )}
       </motion.div>
       <PageTitle
-        title={d ? <span className="flex items-center gap-2">{d.district.name}{d.district.coastal && <Chip>Coastal</Chip>}</span> : <Skeleton className="h-7 w-48" />}
+        title={d ? <span className="flex flex-wrap items-center gap-2">{isBlock ? `${d.district.name} block, ${d.district.parent?.name}` : d.district.name}{d.district.coastal && <Chip>Coastal</Chip>}{isBlock && <BlockDemoBadge />}</span> : <Skeleton className="h-7 w-48" />}
         subtitle={d ? <ContextLine ctx={d.context} /> : <Skeleton className="h-4 w-72" />}
         right={d?.forecast[0] && <ConfidenceBadge level={d.forecast[0].confidence} />}
       />
@@ -49,6 +65,10 @@ export default function District() {
         {d ? d.forecast.map((w) => <WeekCard key={w.lead_week} w={w} />)
           : Array.from({ length: 4 }, (_, i) => <Skeleton key={i} className="h-52" />)}
       </motion.div>
+
+      {blocks.data && blocks.data.blocks.length > 0 && (
+        <BlocksSection data={blocks.data} selected={isBlock ? d?.district.slug : undefined} />
+      )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3">
@@ -66,8 +86,8 @@ export default function District() {
           <CardHeader title="Last 30 days of rain" icon={<Droplets className="h-4 w-4" />}
             subtitle={rain.data
               ? <>{num(rain.data.total_mm, 1)} mm vs {num(rain.data.normal_mm, 1)} mm normal ({num(rain.data.percent_of_normal)}%) · {rain.data.wet_days} wet days · to {day(rain.data.end)}</>
-              : "Observed IMD gridded rainfall"}
-            right={<ObservedBadge />} />
+              : isBlock ? "MOCK block rain derived from Madurai's IMD series" : "Observed IMD gridded rainfall"}
+            right={isBlock ? <BlockDemoBadge /> : <ObservedBadge />} />
           <div className="px-3 pb-4">
             {rain.data ? <RainChart series={rain.data.series} />
               : rain.isError ? <RetryState onRetry={() => rain.refetch()} /> : <Skeleton className="mx-2 h-48" />}
@@ -84,7 +104,7 @@ export default function District() {
       </div>
 
       <Card className="mt-4">
-        <CardHeader title="Advisories for this district" icon={<BellRing className="h-4 w-4" />}
+        <CardHeader title={isBlock ? "Advisories for this block" : "Advisories for this district"} icon={<BellRing className="h-4 w-4" />}
           right={<Link to={`/app/advisories${location.search}`} className="text-[13px] text-accent-700 hover:underline dark:text-accent-400">Open queue →</Link>} />
         <div className="px-5 pb-5">
           {adv.data ? (
@@ -105,6 +125,43 @@ export default function District() {
         </div>
       </Card>
     </Page>
+  );
+}
+
+function BlocksSection({ data, selected }: { data: BlocksResponse; selected?: string }) {
+  const nav = useNavigate();
+  const [theme] = useTheme();
+  const go = (slug: string) => nav(`/app/district/${slug}${location.search}`);
+  const order = { warning: 0, watch: 1, info: 2, none: 3 } as const;
+  const sorted = [...data.blocks].sort((a, b) => order[a.risk.severity] - order[b.risk.severity] || a.name.localeCompare(b.name));
+  return (
+    <Card className="mt-4">
+      <CardHeader title={`Blocks of ${data.district.name}`}
+        subtitle={`${data.count} Community Development blocks · marker at block HQ · click to open`}
+        right={<BlockDemoBadge />} />
+      <div className="grid gap-4 px-5 pb-5 lg:grid-cols-5">
+        <div className="h-[260px] lg:col-span-2">
+          <BlockMap blocks={data.blocks} onSelect={go} dark={theme === "dark"} selected={selected} />
+        </div>
+        <ul className="grid content-start gap-1.5 sm:grid-cols-2 lg:col-span-3">
+          {sorted.map((b) => (
+            <li key={b.id}>
+              <button type="button" onClick={() => go(b.slug)}
+                className={"flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-subtle " + (b.slug === selected ? "bg-subtle ring-1 ring-line" : "")}>
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: SEVERITY_STYLE[b.risk.severity].fill }} />
+                <span className="font-medium">{b.name}</span>
+                <span className="ml-auto truncate text-[12px] text-muted">
+                  {b.risk.top_hazard ? `${HAZARD_LABEL[b.risk.top_hazard]} · ${pct(b.risk.top_probability)}` : "Calm"}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <p className="px-5 pb-4 text-[11px] text-faint">
+        Block list: {data.sources.block_list}. Coordinates: {data.sources.coordinates}. Data: {data.sources.data}.
+      </p>
+    </Card>
   );
 }
 

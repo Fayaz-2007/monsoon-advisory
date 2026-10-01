@@ -42,7 +42,11 @@ def context_or_error(d: date | None) -> Context:
 
 
 def district_or_404(key: str) -> dict[str, Any]:
+    from app.blocks import resolve_block
+
     reg = segment1.resolve_district(key)
+    if reg is None:
+        reg = resolve_block(key)  # MOCK Madurai blocks (demo)
     if reg is None:
         raise HTTPException(404, f"Unknown district {key!r}. Use a name, slug (e.g. 'chennai') "
                                  "or id from GET /api/districts.")
@@ -55,5 +59,10 @@ FORECAST_FIELDS = ["lead_week", "week_start", "week_end", "p_below", "p_normal",
 
 
 def forecast_rows(ctx: Context, region_id: int) -> list[dict[str, Any]]:
-    df = ctx.forecasts[ctx.forecasts["region_id"] == region_id].sort_values("lead_week")
+    from app.blocks import is_block_id
+
+    src = ctx.block_forecasts if is_block_id(region_id) else ctx.forecasts
+    if src.empty:
+        return []
+    df = src[src["region_id"] == region_id].sort_values("lead_week")
     return records(df[FORECAST_FIELDS])

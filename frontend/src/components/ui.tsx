@@ -112,6 +112,16 @@ export function Chip({ children, className, title }: { children: ReactNode; clas
   );
 }
 
+/** "Block level · demo data" badge: marks MOCK block-level regions (Madurai blocks). */
+export function BlockDemoBadge({ className }: { className?: string }) {
+  return (
+    <span title="Community Development block — MOCK demo data, not a real forecast"
+      className={cx("inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-800 ring-1 ring-inset ring-violet-200 dark:bg-violet-500/10 dark:text-violet-200 dark:ring-violet-500/30", className)}>
+      Block level · demo data
+    </span>
+  );
+}
+
 /** "Observed data" badge: marks alerts driven by REAL IMD rainfall. */
 export function ObservedBadge({ className }: { className?: string }) {
   return (

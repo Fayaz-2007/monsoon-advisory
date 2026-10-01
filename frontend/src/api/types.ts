@@ -115,6 +115,46 @@ export interface DistrictInfo {
   lon: number;
   lat: number;
   coastal: boolean;
+  // Present only for MOCK block-level demo regions (Madurai blocks).
+  level?: "block";
+  label?: string;
+  name_ta?: string;
+  parent?: { id: number; name: string; slug: string };
+  hq?: string;
+  demo?: boolean;
+  demo_label?: string;
+  coord_source?: string;
+}
+
+/** A Community Development block (MOCK demo data, Madurai only). */
+export interface BlockInfo {
+  id: number;
+  code: string;
+  slug: string;
+  name: string;
+  name_ta: string;
+  label: string;
+  level: "block";
+  parent: { id: number; name: string; slug: string };
+  hq: string;
+  lon: number;
+  lat: number;
+  coord_source: string;
+  area_km2: number;
+  demo: true;
+  demo_label: string;
+  risk: Risk;
+}
+
+export interface BlocksResponse {
+  context: Context;
+  district: { id: number; name: string; slug: string };
+  level: "block";
+  demo: true;
+  demo_label: string;
+  sources: Record<string, string>;
+  count: number;
+  blocks: BlockInfo[];
 }
 
 export interface ForecastResponse {

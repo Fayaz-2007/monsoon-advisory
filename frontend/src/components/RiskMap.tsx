@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from "react";
-import { GeoJSON, MapContainer, useMap } from "react-leaflet";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { CircleMarker, GeoJSON, MapContainer, Tooltip, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import type { DistrictFeature, DistrictsResponse } from "../api/types";
+import type { BlockInfo, DistrictFeature, DistrictsResponse } from "../api/types";
+import { BlockDemoBadge } from "./ui";
 import { HAZARD_LABEL, pct, SEVERITY_STYLE } from "../lib/format";
 
 const TN_BOUNDS = L.latLngBounds([7.9, 76.1], [13.6, 80.4]);
@@ -46,16 +47,76 @@ function FitBounds() {
   return null;
 }
 
+/** Zoom at or above which the MOCK block markers appear on the state map. */
+const BLOCK_ZOOM = 8;
+
+function blockTooltipHtml(b: BlockInfo): string {
+  const r = b.risk;
+  const sev = SEVERITY_STYLE[r.severity];
+  const hz = r.top_hazard ? `${HAZARD_LABEL[r.top_hazard]} · ${pct(r.top_probability)}` : "No hazards detected";
+  return `<div style="min-width:150px">
+    <div style="font-weight:600;font-size:13px">${b.name} block</div>
+    <div style="opacity:.6">${b.parent.name} district · HQ ${b.hq}</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+      <span style="width:8px;height:8px;border-radius:9px;background:${sev.fill}"></span>${sev.label}</div>
+    <div style="margin-top:2px;opacity:.8">${hz}</div>
+    <div style="margin-top:6px;color:#7c3aed">Block level · demo data</div></div>`;
+}
+
+/** Circle markers at each block HQ, coloured by risk (MOCK demo data). */
+export function BlockMarkers({ blocks, onSelect, dark, selected }: {
+  blocks: BlockInfo[]; onSelect: (slug: string) => void; dark: boolean; selected?: string;
+}) {
+  return (
+    <>
+      {blocks.map((b) => (
+        <CircleMarker key={`${b.id}-${b.risk.severity}`} center={[b.lat, b.lon]} radius={b.slug === selected ? 9 : 7}
+          pathOptions={{ fillColor: SEVERITY_STYLE[b.risk.severity].fill, fillOpacity: 0.95,
+            color: b.slug === selected ? (dark ? "#e4e4e7" : "#14532d") : dark ? "#18181b" : "#ffffff",
+            weight: b.slug === selected ? 3 : 2 }}
+          eventHandlers={{ click: () => onSelect(b.slug) }}>
+          <Tooltip className="av-tip" direction="top" offset={[0, -6]}>
+            <span dangerouslySetInnerHTML={{ __html: blockTooltipHtml(b) }} />
+          </Tooltip>
+        </CircleMarker>
+      ))}
+    </>
+  );
+}
+
+function ZoomWatcher({ onZoom }: { onZoom: (z: number) => void }) {
+  const map = useMapEvents({ zoomend: () => onZoom(map.getZoom()) });
+  return null;
+}
+
+function BlockZoomButton({ blocks, zoomed }: { blocks: BlockInfo[]; zoomed: boolean }) {
+  const map = useMap();
+  const bounds = useMemo(() => L.latLngBounds(blocks.map((b) => [b.lat, b.lon] as [number, number])).pad(0.35), [blocks]);
+  return (
+    <div className="leaflet-top leaflet-left" style={{ pointerEvents: "auto" }}>
+      <button type="button"
+        onClick={(e) => { e.stopPropagation(); if (zoomed) map.fitBounds(TN_BOUNDS, { padding: [8, 8] }); else map.fitBounds(bounds); }}
+        className="leaflet-control m-2 rounded-full border border-line bg-surface px-3 py-1 text-[12px] font-medium text-fg shadow-sm hover:bg-subtle">
+        {zoomed ? "← Tamil Nadu" : "Madurai blocks (demo) →"}
+      </button>
+    </div>
+  );
+}
+
 /**
  * District risk choropleth. Polygons are created once; when the date (and so the risk)
  * changes, each layer's style is updated in place so the CSS fill transition tweens colours.
  */
-export function RiskMap({ data, onSelect, dark, selected }: {
+export function RiskMap({ data, onSelect, dark, selected, blocks }: {
   data: DistrictsResponse;
   onSelect: (slug: string) => void;
   dark: boolean;
   selected?: string;
+  /** MOCK Madurai block markers, shown when zoomed in (zoom ≥ BLOCK_ZOOM). */
+  blocks?: BlockInfo[];
 }) {
+  const [zoom, setZoom] = useState(0);
+  const showBlocks = !!blocks?.length && zoom >= BLOCK_ZOOM;
   const layers = useRef(new Map<number, L.Path>());
   const byId = useMemo(() => new Map(data.features.map((f) => [f.id, f])), [data]);
   // Geometry never changes; keep the first collection for the GeoJSON layer.
@@ -73,8 +134,10 @@ export function RiskMap({ data, onSelect, dark, selected }: {
 
   return (
     <MapContainer bounds={TN_BOUNDS} zoomControl={false} attributionControl={false} scrollWheelZoom={false}
-      className="h-full w-full" style={{ background: "transparent" }} minZoom={6} maxZoom={9} zoomSnap={0.25}>
+      className="h-full w-full" style={{ background: "transparent" }} minZoom={6} maxZoom={blocks?.length ? 10 : 9} zoomSnap={0.25}>
       <FitBounds />
+      <ZoomWatcher onZoom={setZoom} />
+      {!!blocks?.length && <BlockZoomButton blocks={blocks} zoomed={showBlocks} />}
       <GeoJSON
         data={geometry.current as unknown as GeoJSON.FeatureCollection}
         style={(f) => styleFor(byId.get((f as unknown as DistrictFeature).id) ?? (f as unknown as DistrictFeature), dark)}
@@ -90,11 +153,25 @@ export function RiskMap({ data, onSelect, dark, selected }: {
           });
         }}
       />
+      {showBlocks && <BlockMarkers blocks={blocks!} onSelect={onSelect} dark={dark} selected={selected} />}
     </MapContainer>
   );
 }
 
-export function MapLegend() {
+/** Small map of one district's blocks (MOCK demo data). */
+export function BlockMap({ blocks, onSelect, dark, selected }: {
+  blocks: BlockInfo[]; onSelect: (slug: string) => void; dark: boolean; selected?: string;
+}) {
+  const bounds = useMemo(() => L.latLngBounds(blocks.map((b) => [b.lat, b.lon] as [number, number])).pad(0.15), [blocks]);
+  return (
+    <MapContainer bounds={bounds} zoomControl={false} attributionControl={false} scrollWheelZoom={false}
+      className="h-full w-full" style={{ background: "transparent" }}>
+      <BlockMarkers blocks={blocks} onSelect={onSelect} dark={dark} selected={selected} />
+    </MapContainer>
+  );
+}
+
+export function MapLegend({ withBlocks = false }: { withBlocks?: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-3 text-[12px] text-muted">
       {(["warning", "watch", "info", "none"] as const).map((s) => (
@@ -104,6 +181,7 @@ export function MapLegend() {
         </span>
       ))}
       <span className="text-faint">· darker = more likely</span>
+      {withBlocks && <BlockDemoBadge />}
     </div>
   );
 }
