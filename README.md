@@ -1,229 +1,148 @@
-# Hyperlocal Monsoon Onset & Break Prediction System (Block/Village Scale)
+<div align="center">
 
-Smart India Hackathon 2026. The system predicts monsoon onset, false onset, dry spells, heavy
-rain and revival at block level, 1–4 weeks ahead, and turns those forecasts into crop advisories for farmers.
+![header](https://capsule-render.vercel.app/api?type=waving&color=gradient&height=200&section=header&text=AgriVarsha&fontSize=45&fontColor=fff)
 
-| # | Segment | Folder | Status |
-| --- | --- | --- | --- |
-| 1 | **Data pipeline** | `backend/pipeline/` | ✅ built |
-| 2 | ML models | `backend/ml/` | placeholder |
-| 3 | Hazard detection | `backend/hazards/` | placeholder |
-| 4 | Advisory engine | `backend/advisory/` | placeholder |
-| 5 | Backend API | `backend/app/` | placeholder |
-| 6 | Frontend | `frontend/` | placeholder |
-| 7 | Delivery (SMS/IVR) | `backend/delivery/` | placeholder |
+![Typing SVG](https://readme-typing-svg.demolab.com?font=Fira+Code&size=22&pause=1000&color=10B981&center=true&vCenter=true&width=750&lines=Hyperlocal+monsoon+onset+%26+break+prediction;Block-level+crop+advisories+for+Tamil+Nadu+farmers)
 
-Demo scope: **Tamil Nadu** (block level where boundaries are available, else district). The code is
-state-agnostic: adding a state means editing only `backend/.env` and adding boundary files.
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![PostGIS](https://img.shields.io/badge/PostGIS-336791?style=for-the-badge&logo=postgresql&logoColor=white)
+![LightGBM](https://img.shields.io/badge/LightGBM-00A3E0?style=for-the-badge)
+![SIH 2026](https://img.shields.io/badge/Smart%20India%20Hackathon-2026-FF6B35?style=for-the-badge)
+![Made By](https://img.shields.io/badge/Made%20by-Fayaz--2007-blueviolet?style=for-the-badge)
+
+</div>
+
+## 📌 Overview
+
+Monsoon forecasts in India are usually issued at the state or district level, far too coarse for a farmer deciding when to sow. **AgriVarsha** (monsoon-advisory) closes that gap: it predicts monsoon onset, false onset, dry spells, heavy-rain spells and monsoon revival at **block level, 1–4 weeks ahead**, then turns those hazard forecasts into plain-language (English + Tamil) crop advisories. Built for **Smart India Hackathon 2026**, the system runs a real IMD-rainfall data pipeline and a validated LightGBM forecasting model behind a live dashboard, with the demo scoped to Tamil Nadu but designed to be state-agnostic.
+
+## ✨ Features
+
+- 📡 Real daily-rainfall pipeline ingesting IMD gridded data (1991 → present) plus ENSO, IOD and MJO climate indices
+- 🧠 LightGBM-based forecasting model (`s2-lgbm-...`) with confidence-rated 1–4 week forecasts
+- ⚠️ Hazard detection for false onset, dry spells, heavy rain and monsoon revival, driven by observed rainfall
+- 🌾 Advisory engine that drafts farmer-facing recommendations in English and Tamil with a review workflow and audit trail
+- 🗺️ Interactive block/district map dashboard (React + Leaflet) with live data, no mock state on the frontend
+- 🔀 Switchable forecast source — deterministic mock generator or the real trained model — toggled per deployment
+- 📲 SMS/WhatsApp/IVR advisory delivery pipeline (simulated gateway, real advisory text)
+- 🧪 Built-in demo scenarios (false onset trap, NE monsoon surge, mid-season break, normal season) for live walkthroughs
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Data pipeline | ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white) imdlib · xarray · geopandas · pandas |
+| ML / Forecasting | ![LightGBM](https://img.shields.io/badge/LightGBM-00A3E0?style=flat-square) scikit-learn · mlflow |
+| Backend API | ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white) SQLAlchemy · GeoAlchemy2 · Pydantic |
+| Database | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white) ![PostGIS](https://img.shields.io/badge/PostGIS-336791?style=flat-square&logo=postgresql&logoColor=white) |
+| Frontend | ![React](https://img.shields.io/badge/React%2019-20232A?style=flat-square&logo=react&logoColor=61DAFB) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white) TailwindCSS · Leaflet · Recharts |
+| LLM layer | Claude (via `anthropic` SDK), optional — plain-language rewording and chat answers |
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart LR
+    IMD[IMD Rainfall + ENSO/IOD/MJO] --> PIPE[Segment 1\nData Pipeline]
+    PIPE --> DB[(PostgreSQL + PostGIS)]
+    DB --> ML[Segment 2\nLightGBM Forecast Model]
+    DB --> HAZ[Hazard Detection]
+    ML --> HAZ
+    HAZ --> ADV[Advisory Engine\nEN + Tamil]
+    ADV --> API[FastAPI Backend]
+    API --> FE[React Dashboard]
+    ADV --> DELIVERY[SMS / WhatsApp / IVR]
+```
+
+## 📂 Project Structure
 
 ```
 monsoon-advisory/
 ├── backend/
-│   ├── pipeline/        Segment 1 (see backend/pipeline/README.md)
-│   ├── app/ ml/ hazards/ advisory/ delivery/   placeholders
-│   ├── data/raw/        downloads + seed files (git-ignored except seeds)
-│   ├── data/processed/  quality report, logs (git-ignored)
+│   ├── pipeline/        # Segment 1 — IMD ingestion, climatology, features
+│   ├── ml/               # Segment 2 — LightGBM forecasting model
+│   ├── hazards/          # Hazard detection logic
+│   ├── advisory/         # Advisory drafting + review workflow
+│   ├── app/               # FastAPI backend (Segments 3–5, 7)
+│   ├── delivery/         # SMS/WhatsApp/IVR gateway
+│   ├── data/              # raw/ and processed/ (mostly git-ignored)
 │   ├── tests/
-│   ├── requirements.txt
-│   └── .env.example
-├── frontend/            placeholder
-├── docs/contracts/      segment1_output.md (features_daily contract for Segment 2)
-├── setup_db.bat (+ .ps1)   one-click native PostgreSQL + PostGIS setup (Windows, no admin)
-├── start_db.bat / stop_db.bat   native PostgreSQL control (Windows)
-├── .pgdata/             local PostgreSQL cluster (git-ignored)
-└── docker-compose.yml   optional alternative: PostgreSQL 16 + PostGIS 3.4
+│   └── requirements.txt
+├── frontend/              # React + Vite + TypeScript dashboard
+├── docs/contracts/        # Inter-segment data contracts
+├── setup_db.bat            # One-click native PostgreSQL + PostGIS setup (Windows)
+├── start_db.bat / stop_db.bat
+└── docker-compose.yml      # Optional Docker alternative
 ```
 
-## Setup: native Windows (primary, no Docker, no admin rights)
+## ⚙️ Installation
 
-This is exactly how the dev machine was set up on 2026-09-29. Nothing needs admin/UAC:
-PostgreSQL runs from a portable folder and stores its data inside the repo.
+```bash
+git clone https://github.com/Fayaz-2007/monsoon-advisory.git
+cd monsoon-advisory
 
-| Piece | Location |
-| --- | --- |
-| PostgreSQL 16.15 binaries (EDB zip) + PostGIS 3.6.2 (OSGeo bundle zip) | `F:\AGRI-VARSHA\tools\pgsql\` (next to the repo, *outside* git) |
-| Database cluster (data folder) | `monsoon-advisory\.pgdata\` (git-ignored), log in `.pgdata\server.log` |
-| Server | `localhost:5432` only (not exposed on the network) |
-| Database / app user | `monsoon` / `monsoon_app` (password in `backend\.env`, git-ignored) |
-| Python | 3.11 venv in `backend\.venv\` (all packages from prebuilt Windows wheels) |
+# Database (Windows, no admin rights needed)
+setup_db.bat
 
-### Daily use
-
-```bat
-cd F:\AGRI-VARSHA\monsoon-advisory
-start_db.bat                                  & rem starts PostgreSQL; adds psql to PATH in this window
-cd backend
-.venv\Scripts\activate
-python -m pipeline.run --stage daily          & rem bring data up to yesterday
-cd ..
-stop_db.bat                                   & rem optional: stop PostgreSQL when done
-```
-
-`start_db.bat` / `stop_db.bat` look for the binaries in `..\tools\pgsql\bin`; if you move them,
-`set PGBIN=C:\path\to\pgsql\bin` first.
-
-### One-time setup on a new Windows machine (one click, no admin)
-
-1. Clone the repo, for example to `F:\AGRI-VARSHA\monsoon-advisory`.
-2. Double-click **`setup_db.bat`** (or run it from cmd). In about 1–2 minutes it:
-   - downloads PostgreSQL 16.15 (EDB portable zip, ~317 MB) and PostGIS 3.6.2 (OSGeo bundle,
-     ~118 MB, MD5-verified) into `..\tools\downloads\`
-   - extracts them to `..\tools\pgsql\` and merges in PostGIS without overwriting PostgreSQL files
-   - creates the cluster in `.pgdata\` (localhost only, scram-sha-256, random passwords)
-   - starts it, then creates role `monsoon_app`, database `monsoon` and the `postgis` extension
-   - writes `backend\.env` from `.env.example` with `DATABASE_URL` and `PG_SUPERUSER_PASSWORD`
-     (an existing `.env` is backed up to `.env.bak`, and only those two lines change)
-   - connects as `monsoon_app` and prints `postgis_full_version()`
-3. Python environment:
-
-```bat
+# Backend
 cd backend
 py -3.11 -m venv .venv
 .venv\Scripts\activate
-python -m pip install --upgrade pip
 pip install -r requirements.txt
-pytest
+
+# Frontend
+cd ../frontend
+npm install
 ```
 
-Re-running `setup_db.bat` is safe: cached downloads, the extracted binaries and the existing
-cluster are reused. Options: `setup_db.bat -Port 5440 -DataDir D:\pg\data -ToolsDir D:\pg\tools
--EnvFile D:\pg\.env`. If you pick another port, `set PGPORT=5440` before `start_db.bat`.
+### Environment variables (`backend/.env`)
 
-<details><summary>Manual equivalent (what setup_db does)</summary>
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL + PostGIS connection string |
+| `FORECAST_SOURCE` | `mock` (default) or `real` to use the trained LightGBM model |
+| `CDS_API_KEY` | Optional — enables ERA5 climate data ingestion |
+| `LLM_API_KEY` | Optional — enables Claude-powered plain-language rewording |
 
-```bat
-mkdir F:\AGRI-VARSHA\tools && cd /d F:\AGRI-VARSHA\tools
-curl -L -o pg.zip https://get.enterprisedb.com/postgresql/postgresql-16.15-1-windows-x64-binaries.zip
-curl -L -o postgis.zip https://download.osgeo.org/postgis/windows/pg16/postgis-bundle-pg16-3.6.2x64.zip
-%SystemRoot%\System32\tar.exe -xf pg.zip
-%SystemRoot%\System32\tar.exe -xf postgis.zip
-robocopy postgis-bundle-pg16-3.6.2x64 pgsql /E /XC /XN /XO
-cd /d F:\AGRI-VARSHA\monsoon-advisory
-..\tools\pgsql\bin\initdb.exe -D .pgdata -U postgres -W -A scram-sha-256 -E UTF8 --locale=C
-start_db.bat
-psql -h localhost -U postgres -c "CREATE ROLE monsoon_app LOGIN PASSWORD 'APP_PASSWORD';"
-psql -h localhost -U postgres -c "CREATE DATABASE monsoon OWNER monsoon_app ENCODING 'UTF8';"
-psql -h localhost -U postgres -d monsoon -c "CREATE EXTENSION postgis;"
-rem then set DATABASE_URL in backend\.env
-```
+## 🚀 Usage
 
-Use `%SystemRoot%\System32\tar.exe` explicitly: if Git for Windows' `usr\bin` is on PATH, plain
-`tar` is GNU tar, which cannot extract to `C:\...` paths.
-</details>
-
-Why not the regular installers? The EDB/Stack Builder installers need admin rights, `winget`
-was not available, and conda-forge has **no Windows build of PostGIS**, so the portable-zip route
-is the only one that works without elevation. If you do have admin rights, the normal EDB installer
-plus Stack Builder → Spatial Extensions → PostGIS for PG16 also works; just point `DATABASE_URL` at it.
-
-### Optional: Docker instead
-
-`docker-compose.yml` is kept as an alternative (PostGIS 16-3.4 on host port **5433**, user/password
-`monsoon`/`monsoon`). If you use it, set
-`DATABASE_URL=postgresql+psycopg2://monsoon:monsoon@localhost:5433/monsoon`. The pipeline itself has
-no Docker assumptions; it only reads `DATABASE_URL`.
-
-### Boundaries
-
-Put a Tamil Nadu block-level (or district-level) GeoJSON/GPKG/SHP file in
-`backend/data/raw/boundaries/`. See [its README](backend/data/raw/boundaries/README.md) for sources.
-The dev database currently uses `tn_districts_geoboundaries_adm2.geojson` (38 districts,
-geoBoundaries gbOpen IND ADM2, ODbL, filtered to Tamil Nadu).
-
-## Running the pipeline
-
-All commands run from `backend/` with the virtualenv active.
+**One-click demo:**
 
 ```bash
-# Everything, full history. First run: ~10 min of IMD downloads (~830 MB); after that
-# the district-level run takes under a minute.
+run_demo.bat
+```
+
+This starts PostgreSQL, the FastAPI backend (`:8000`), the React frontend (`:5173`) and opens the dashboard. Press **D** in the app for demo scenario controls.
+
+**Manual pipeline run:**
+
+```bash
+cd backend
 python -m pipeline.run --stage all --start 1991-01-01 --end 2025-12-31
-
-# Or stage by stage
-python -m pipeline.run --stage boundaries
-python -m pipeline.run --stage cropcal
-python -m pipeline.run --stage indices
-python -m pipeline.run --stage rainfall    --start 1991-01-01 --end 2025-12-31
-python -m pipeline.run --stage era5        --start 2015-01-01 --end 2025-12-31   # optional
-python -m pipeline.run --stage aggregate   --start 1991-01-01 --end 2025-12-31
-python -m pipeline.run --stage climatology
-python -m pipeline.run --stage features    --start 1991-01-01 --end 2025-12-31
-python -m pipeline.run --stage quality     --start 1991-01-01 --end 2025-12-31
-
-# Bring data up to yesterday using IMD real-time data (scheduler entry point)
-python -m pipeline.run --stage daily
+python -m app.seed --scenarios
+uvicorn app.main:app --reload
 ```
 
-Every run ends with a summary table. The quality report is written to
-`backend/data/processed/quality_report.md`, and a full log to `backend/data/processed/pipeline.log`.
+`[Screenshot: block-level monsoon forecast map]`
 
-Segment 2 usage:
+`[Screenshot: crop advisory dashboard]`
 
-```python
-from pipeline import load_features
-df = load_features(start="2015-01-01", end="2025-12-31")
-```
+## 🔮 Future Improvements
 
-## Running the demo (AgriVarsha)
+- Expand beyond Tamil Nadu to additional states using the existing state-agnostic pipeline
+- Replace the simulated SMS/WhatsApp/IVR gateway with a real delivery integration
+- Move farmer-count data from mock to a real district × crop dataset
+- Promote the real LightGBM forecast source to default once validated further
 
-Double-click **`run_demo.bat`** (or run it from `cmd`). It starts PostgreSQL, the backend API
-(`uvicorn app.main:app` on port 8000), waits until the API answers (a cold start can take
-~90 s), starts the frontend (`npm run dev` on port 5173) and opens http://localhost:5173/.
-Press **D** in the app for the demo controls. Click-by-click story: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+## 👨‍💻 Author
 
-Manually: `cd backend && python -m app.seed --scenarios && uvicorn app.main:app --reload`, then
-`cd frontend && npm install && npm run dev`. API contract: [`docs/contracts/api.md`](docs/contracts/api.md).
+**Fayaz Ahmed**
+GitHub: [@Fayaz-2007](https://github.com/Fayaz-2007)
+LinkedIn: [fayaz-ahmed-59287631a](https://linkedin.com/in/fayaz-ahmed-59287631a)
 
-## Demo mode vs real mode
+<div align="center">
 
-Everything the demo shows comes from the running backend; the frontend holds no data of its
-own. Only forecasts (by default), farmer counts and the message gateway are mocked, each
-behind a switch:
+![footer](https://capsule-render.vercel.app/api?type=waving&color=gradient&height=150&section=footer)
 
-| What | Real or mocked | How to switch |
-| --- | --- | --- |
-| District boundaries, observed IMD rainfall (1991 to yesterday), climatology, crop calendar | **Real** (Segment 1 pipeline) | always real |
-| Pipeline runs, data-quality report, validated model skill with CIs | **Real** (Segments 1–2) | always real |
-| Hazard detection, advisory drafting (EN + Tamil), review workflow, audit trail, feedback store | **Real logic**, persisted in PostgreSQL | always real |
-| 4-week forecasts | **Mock** generator by default (deterministic, same schema as the model), or the **real** LightGBM model `s2-lgbm-20260929-0304` | header toggle *Mock / Real model*, `POST /api/settings/forecast-source`, or `FORECAST_SOURCE=real` in `backend/.env` |
-| Demo scenarios (false onset trap, NE monsoon surge, mid-season break, normal season) | **Mock** overrides on top of mock forecasts | Demo panel (**D**) or `POST /api/demo/scenario/{name}`; activating one switches the source to mock |
-| Farmer counts per district × crop | **Mock** | `FARMER_COUNT_SOURCE` (only `mock` exists today) |
-| SMS / WhatsApp / IVR gateway and funnel counts | **Simulated** (the message text is the real advisory) | `DELIVERY_MODE` (only `simulated` today) |
-| Plain-language rewording and chat answers | Templates built from live data; Claude when `LLM_API_KEY` is set | `LLM_API_KEY` in `backend/.env` |
-
-Hazards driven by **observed** rain are real whatever the forecast source; the app marks them
-with an *Observed data* badge. In real mode, a date without its own model run uses the latest
-run on or before it (the header shows "run of …"). The current model rates every forecast
-*Low* confidence, so real mode raises no forecast-only warnings.
-
-## Data sources
-
-| Data | Source | Notes |
-| --- | --- | --- |
-| Daily rainfall 0.25° | IMD Pune gridded data via [`imdlib`](https://github.com/iamsaswata/imdlib) | final data to 2025; real-time provisional grid for 2026+ |
-| ENSO | NOAA CPC ONI `oni.ascii.txt` | monthly, forward-filled to daily |
-| IOD | NOAA PSL `dmi.had.long.data` | monthly, forward-filled to daily |
-| MJO | BoM `rmm.74toRealtime.txt` (ends 2024-02-24) + NOAA PSL ROMI (real-time) | see the contract for the RMM→ROMI switch |
-| ERA5 (optional) | Copernicus CDS | u/v 850 hPa, TCWV, OLR proxy |
-| Boundaries | user-supplied (TNGIS / Bhuvan / SHRUG / geoBoundaries / DataMeet) | never hardcoded |
-| Crop calendar | `backend/data/raw/crop_calendar_tn.csv` | **SAMPLE**, verify with TNAU / Agri Dept |
-
-All URLs are configurable in `backend/.env`.
-
-## Troubleshooting
-
-| Symptom | Fix |
-| --- | --- |
-| `Cannot connect to the database` | Run `start_db.bat` from the repo root, then check with `pg_isready -h localhost -p 5432`. Check `DATABASE_URL` in `backend\.env`. |
-| `start_db.bat`: "Start failed" | Read `.pgdata\server.log`. The usual causes are another PostgreSQL already using port 5432 (stop it, or change `port` in `.pgdata\postgresql.conf` and in `DATABASE_URL`), or a stale `.pgdata\postmaster.pid` after a crash (delete it only if no `postgres.exe` is running). |
-| `psql` not found | Run `start_db.bat` in that same cmd window (it adds `..\tools\pgsql\bin` to PATH), or call it by full path. |
-| `could not open extension control file ... postgis.control` | The PostGIS bundle wasn't copied into `tools\pgsql`; redo the robocopy step. |
-| `No boundary files in …` | Add a file to `backend/data/raw/boundaries/` (see its README). |
-| `cannot find a name column` | Set `BOUNDARY_NAME_COL` (and `BOUNDARY_DISTRICT_COL`, `BOUNDARY_STATE_COL`) in `.env`. |
-| 0 regions for the state | The state column's spelling differs. Matching ignores case and spaces, so check the value; or set `BOUNDARY_STATE_COL`. |
-| IMD download slow or failing | The IMD server is slow (10–30 s per request) and sometimes returns empty files. Each download is retried 3 times; just re-run to fill any remaining gaps, since completed files are cached. Behind a proxy, set `HTTP_PROXY_URL`. |
-| `IMD final rainfall for 2026 not available` | Expected. IMD publishes final data about a year late. `rainfall`/`daily` use the real-time grid instead. |
-| Index download 403/timeout | Cached copies are used if present. Check the URL in a browser and update `ONI_URL` / `DMI_URL` / `RMM_URL` / `ROMI_URL`. |
-| ERA5 `skipped` | No `CDS_API_KEY`. That's fine: ERA5 columns stay NULL. To enable it, add your CDS token **and** accept the licence for "ERA5 hourly data on pressure levels" and "single levels" on the CDS website. |
-| Changed the bounding box | Delete `backend/data/raw/imd/cropped/` and re-run `rainfall` and `aggregate`. |
-| Start over | `stop_db.bat`, delete `.pgdata\`, repeat one-time setup steps 2–3, then run `--stage all`. Raw downloads are kept. (Docker: `docker compose down -v`.) |
+</div>
