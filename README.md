@@ -124,9 +124,7 @@ python -m app.seed --scenarios
 uvicorn app.main:app --reload
 ```
 
-`[Screenshot: block-level monsoon forecast map]`
 
-`[Screenshot: crop advisory dashboard]`
 
 ## 🔮 Future Improvements
 
