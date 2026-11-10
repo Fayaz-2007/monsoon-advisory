@@ -31,14 +31,33 @@ Monsoon forecasts in India are usually issued at the state or district level, fa
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Data pipeline | ![Python](https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white) imdlib · xarray · geopandas · pandas |
-| ML / Forecasting | ![LightGBM](https://img.shields.io/badge/LightGBM-00A3E0?style=flat-square) scikit-learn · mlflow |
-| Backend API | ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white) SQLAlchemy · GeoAlchemy2 · Pydantic |
-| Database | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-336791?style=flat-square&logo=postgresql&logoColor=white) ![PostGIS](https://img.shields.io/badge/PostGIS-336791?style=flat-square&logo=postgresql&logoColor=white) |
-| Frontend | ![React](https://img.shields.io/badge/React%2019-20232A?style=flat-square&logo=react&logoColor=61DAFB) ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white) TailwindCSS · Leaflet · Recharts |
-| LLM layer | Claude (via `anthropic` SDK), optional — plain-language rewording and chat answers |
+**Languages**
+
+![](https://skillicons.dev/icons?i=py,ts)
+
+**ML**
+
+![](https://skillicons.dev/icons?i=sklearn)
+
+**Backend**
+
+![](https://skillicons.dev/icons?i=fastapi)
+
+**Database**
+
+![](https://skillicons.dev/icons?i=postgres)
+
+**Frontend**
+
+![](https://skillicons.dev/icons?i=react,vite,tailwind)
+
+**Tools**
+
+![](https://skillicons.dev/icons?i=git,github)
+
+**Also using**
+
+![LightGBM](https://img.shields.io/badge/LightGBM-00A3E0?style=for-the-badge) ![MLflow](https://img.shields.io/badge/MLflow-0194E2?style=for-the-badge&logo=mlflow&logoColor=white) ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=for-the-badge&logo=pydantic&logoColor=white) ![PostGIS](https://img.shields.io/badge/PostGIS-336791?style=for-the-badge&logo=postgresql&logoColor=white) ![Leaflet](https://img.shields.io/badge/Leaflet-199900?style=for-the-badge&logo=leaflet&logoColor=white) ![Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=anthropic&logoColor=white)
 
 ## 🏗️ Architecture
 
